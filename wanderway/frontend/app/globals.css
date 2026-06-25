@@ -1,0 +1,129 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular;
+  --font-inter: var(--font-inter-custom);
+  --font-mamenchisa: var(--font-mamenchisa-custom);
+  --font-calfinedemo: var(--font-calfinedemo-custom);
+  --font-harmond-extrabold: var(--font-harmond-extrabold-custom);
+  --font-harmond-semibold: var(--font-harmond-semibold-italic-custom);
+  --font-eagle: var(--font-eagle-custom);
+  --font-milkywalky: var(--font-milkywalky-custom);
+}
+
+@layer base {
+  :root {
+    /* Background: Sand / Soft Off-White (#FAFAF8) */
+    --background: 60 14% 98%;
+    /* Foreground: Rich Ink Black (#0F0F0F) */
+    --foreground: 0 0% 6%;
+
+    /* Cards & Popovers match the background */
+    --card: 60 14% 98%;
+    --card-foreground: 0 0% 6%;
+    --popover: 60 14% 98%;
+    --popover-foreground: 0 0% 6%;
+
+    /* Primary: Deep Forest Green (#1A6B4A) */
+    --primary: 156 61% 26%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary: Sunlight Yellow (#FBBF24) */
+    --secondary: 43 96% 56%;
+    /* Text on Yellow: Deep warm brown/black for perfect contrast */
+    --secondary-foreground: 21 90% 14%;
+
+    /* Accent: Soft Leaf Green for hover states (#EDF4F0) */
+    --accent: 146 27% 94%;
+    --accent-foreground: 156 61% 26%;
+
+    /* Muted: Earthy Gray for secondary text and borders */
+    --muted: 60 5% 90%;
+    --muted-foreground: 0 0% 45%;
+
+    /* Destructive: Warm Red/Orange */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* UI Borders and Focus Rings */
+    --border: 60 5% 90%;
+    --input: 60 5% 90%;
+    /* The focus ring uses the vibrant yellow for a pop of interaction */
+    --ring: 43 96% 56%;
+
+    /* Heavily rounded geometry for the premium, fluid feel */
+    --radius: 1.25rem;
+  }
+
+  .dark {
+    /* Night Mode: Deep Forest/Charcoal */
+    --background: 156 20% 8%;
+    --foreground: 60 14% 98%;
+    --card: 156 20% 8%;
+    --card-foreground: 60 14% 98%;
+    --popover: 156 20% 8%;
+    --popover-foreground: 60 14% 98%;
+
+    --primary: 156 61% 40%;
+    --primary-foreground: 156 20% 8%;
+
+    --secondary: 43 96% 56%;
+    --secondary-foreground: 21 90% 14%;
+
+    --accent: 156 40% 15%;
+    --accent-foreground: 60 14% 98%;
+
+    --muted: 156 20% 15%;
+    --muted-foreground: 60 5% 70%;
+
+    --border: 156 20% 15%;
+    --input: 156 20% 15%;
+    --ring: 43 96% 56%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-secondary selection:text-secondary-foreground;
+    scroll-behavior: smooth;
+  }
+
+  /* Global transition softening for premium interaction feel */
+  a,
+  button,
+  input,
+  [role="button"] {
+    @apply transition-all duration-300 ease-in-out;
+  }
+}
