@@ -254,8 +254,10 @@ const ChatBot: React.FC<ChatBotProps> = ({
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 opacity-60">
-            <Zap size={14} className="text-secondary" />
-            <span className="text-[10px] uppercase tracking-widest">Groq · Llama 3.3</span>
+            <Zap size={14} className={isLoading && planningStatus ? "text-emerald-400" : "text-secondary"} />
+            <span className="text-[10px] uppercase tracking-widest">
+              {isLoading && planningStatus ? "Gemini 2.5 Flash" : "Groq · Llama 3.3"}
+            </span>
           </div>
           {/* BUG-27 FIX: VoiceButton now rendered in ChatBot header */}
           <VoiceButton

@@ -10,6 +10,7 @@ import { ASSETS } from "@/lib/assets";
 import { useUser, useClerk, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { History, LogIn, UserPlus } from "lucide-react";
 import TripHistoryModal from "@/components/planning/TripHistoryModal";
+import ThemeToggle from "@/components/ThemeToggle";
 import type { TripData } from "@/types/trip";
 
 const nav_links = [
@@ -51,8 +52,10 @@ const NavBar = () => {
           </h1>
         </Link>
 
-        {/* Right Side: Nav + Auth */}
+        {/* Right Side: Theme toggle + Nav + Auth */}
         <div className="flex items-center gap-6">
+          <ThemeToggle />
+
           <ul className="hidden md:flex items-center gap-6">
             {nav_links.map((link, index) => (
               <li key={index}>

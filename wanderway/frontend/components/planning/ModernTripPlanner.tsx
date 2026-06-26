@@ -15,7 +15,11 @@ import {
   Camera,
   Navigation,
   Loader2,
+  Share2,
+  Save,
+  Check,
 } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
 import TripMap from "./TripMap";
 import ChatBot from "./ChatBot";
 import TripResults from "./TripResults";
@@ -37,6 +41,7 @@ export default function ModernTripPlanner({
   pendingMessage,
   onPendingMessageConsumed,
 }: ModernTripPlannerProps) {
+  const { user } = useUser();
   const [prompt, setPrompt] = useState("");
   const [activeBudget, setActiveBudget] = useState("Moderate");
   const [activeStyle, setActiveStyle] = useState("Couple");
@@ -47,6 +52,9 @@ export default function ModernTripPlanner({
   const [budgetInput, setBudgetInput] = useState("");
   const [departureDate, setDepartureDate] = useState("");
   const [returnDate, setReturnDate] = useState("");
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   const handleGenerate = async () => {
@@ -82,6 +90,45 @@ export default function ModernTripPlanner({
       console.error("Trip planning failed:", error);
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleSaveTrip = async () => {
+    if (!user || !tripData) return;
+    
+    setIsSaving(true);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/trips/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": user.id,
+        },
+        body: JSON.stringify({ tripData }),
+      });
+
+      if (response.ok) {
+        setIsSaved(true);
+        setTimeout(() => setIsSaved(false), 3000);
+      } else {
+        console.error("Failed to save trip:", await response.text());
+      }
+    } catch (error) {
+      console.error("Save trip error:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleShare = async () => {
+    const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+    
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 3000);
+    } catch (error) {
+      console.error("Share failed:", error);
     }
   };
 
@@ -224,11 +271,44 @@ export default function ModernTripPlanner({
                 </p>
               </div>
               <div className="flex gap-3 w-full md:w-auto">
-                <button className="flex-1 md:flex-none px-6 py-2.5 bg-white border border-gray-200 rounded-full text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition shadow-sm">
-                  Share
+                <button
+                  onClick={handleShare}
+                  disabled={!tripData}
+                  className="flex-1 md:flex-none px-6 py-2.5 bg-white border border-gray-200 rounded-full text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {shareCopied ? (
+                    <>
+                      <Check size={16} className="text-green-600" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Share2 size={16} />
+                      Share
+                    </>
+                  )}
                 </button>
-                <button className="flex-1 md:flex-none px-6 py-2.5 bg-gray-900 text-white rounded-full text-sm font-semibold hover:bg-gray-800 hover:-translate-y-0.5 transition shadow-md">
-                  Save to Profile
+                <button
+                  onClick={handleSaveTrip}
+                  disabled={!user || !tripData || isSaving}
+                  className="flex-1 md:flex-none px-6 py-2.5 bg-gray-900 text-white rounded-full text-sm font-semibold hover:bg-gray-800 hover:-translate-y-0.5 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Saving...
+                    </>
+                  ) : isSaved ? (
+                    <>
+                      <Check size={16} className="text-green-400" />
+                      Saved!
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} />
+                      Save to Profile
+                    </>
+                  )}
                 </button>
               </div>
             </div>

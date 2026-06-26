@@ -127,7 +127,7 @@ function generateGeneric(destination: string) {
 
 // ─── Main dispatcher ──────────────────────────────────────────────────────────
 export async function executeTool(name: string, args: Record<string, unknown>): Promise<string> {
-  const mock = process.env.MOCK_APIS === "true";
+  const mock = process.env.NEXT_PUBLIC_MOCK_APIS === "true";
   switch (name) {
     case "search_travel_options": return searchTravelOptions(args, mock);
     case "get_places_live": return getPlacesLive(args);
