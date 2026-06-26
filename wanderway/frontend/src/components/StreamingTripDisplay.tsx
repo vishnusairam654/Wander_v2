@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Box, Typography, LinearProgress, Skeleton, Card, CardContent, Button, Stack, Alert, Paper } from '@mui/material';
+import { Box, Typography, LinearProgress, Skeleton, Card, CardContent, Button, Stack, Alert, Paper, CircularProgress } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TripResponse } from '../lib/api';
 import DayItineraryCard from './DayItineraryCard';
@@ -27,8 +27,27 @@ export default function StreamingTripDisplay({ status, rawChunks, parsedTrip, er
     return null;
   }
 
-  const estimatedTotalChunks = 100;
-  const progress = Math.min((rawChunks.length / estimatedTotalChunks) * 100, 100);
+  if (status === 'streaming' && rawChunks.length === 0) {
+    return (
+      <Box sx={{ mt: 4, width: '100%' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+          <CircularProgress size={24} />
+          <Typography color="text.secondary">
+            Initializing AI travel planner...
+          </Typography>
+        </Box>
+        <Skeleton variant="rectangular" height={100} sx={{ borderRadius: 2, mb: 2 }} />
+        <Skeleton variant="rectangular" height={150} sx={{ borderRadius: 2, mb: 2 }} />
+        <Skeleton variant="rectangular" height={150} sx={{ borderRadius: 2 }} />
+      </Box>
+    );
+  }
+
+  const BASE_CHUNK_ESTIMATE = 150;
+  const dynamicLimit = Math.max(BASE_CHUNK_ESTIMATE, rawChunks.length + 30);
+  const progress = status === 'done'
+    ? 100
+    : Math.min(99, Math.round((rawChunks.length / dynamicLimit) * 100));
 
   const containerVariants = {
     hidden: { opacity: 0 },

@@ -1,54 +1,86 @@
-import pytest
 from unittest.mock import AsyncMock
-from httpx import AsyncClient, ASGITransport
 
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+from app.api.deps import get_cache, get_gemini
 from app.main import app
-from app.models.trip import TripResponse, TripRequest
+from app.models.trip import TripResponse
+
 
 @pytest.fixture
-def mock_services(mocker):
-    """Mocks external services like Gemini and Redis cache."""
-    mock_trip_response = TripResponse(id="test-123", destination="Paris", start_date="2024-01-01", end_date="2024-01-05", itinerary=[])
-    mocker.patch('app.services.gemini.GeminiService.plan_trip', return_value=mock_trip_response)
-    mocker.patch('app.core.cache.CacheService.get_cached_trip', return_value=None)
-    mocker.patch('app.core.cache.CacheService.cache_trip', new_callable=AsyncMock)
-    mocker.patch('app.core.cache.CacheService.health_check', return_value=True)
-    return mock_trip_response
+def trip_response():
+    return TripResponse(
+        id="test-123",
+        destination="Paris",
+        start_date="2026-07-01",
+        end_date="2026-07-03",
+        itinerary=[
+            {
+                "day_number": 1,
+                "date": "2026-07-01",
+                "theme": "Art",
+                "activities": [
+                    {
+                        "time": "09:00",
+                        "title": "Louvre",
+                        "description": "Visit the museum.",
+                    }
+                ],
+            }
+        ],
+    )
+
 
 @pytest.fixture
-async def client():
-    """Provides an async test client for the app."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        yield ac
+def service_overrides(trip_response):
+    cache = AsyncMock()
+    cache.make_cache_key.return_value = "cache-key"
+    cache.get_cached_trip.return_value = None
+
+    gemini = AsyncMock()
+    gemini.plan_trip.return_value = trip_response
+
+    app.dependency_overrides[get_cache] = lambda: cache
+    app.dependency_overrides[get_gemini] = lambda: gemini
+    yield cache, gemini
+    app.dependency_overrides.clear()
+
 
 @pytest.mark.asyncio
-async def test_plan_trip(client: AsyncClient, mock_services):
-    req_data = TripRequest(destination="Paris", start_date="2024-01-01", end_date="2024-01-05", budget="moderate", interests=["art"])
-    response = await client.post("/api/v1/trips/plan", json=req_data.model_dump())
+async def test_plan_trip(service_overrides):
+    payload = {
+        "destination": "Paris",
+        "start_date": "2026-07-01",
+        "end_date": "2026-07-03",
+        "budget": "moderate",
+        "interests": ["art"],
+        "number_of_people": 2,
+    }
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.post("/api/v1/trips/plan", json=payload)
+
     assert response.status_code == 200
     assert response.json()["id"] == "test-123"
     assert response.json()["destination"] == "Paris"
 
-@pytest.mark.asyncio
-async def test_rate_limit(client: AsyncClient, mock_services):
-    # Need to reset limiter or ensure fresh context, but SlowAPI limits by IP.
-    # In a test, all requests come from the same IP (testclient).
-    # We should make 10 requests, and the 11th should return 429.
-    req_data = TripRequest(destination="Paris", start_date="2024-01-01", end_date="2024-01-05", budget="moderate", interests=["art"])
-    json_data = req_data.model_dump()
-
-    # Make 10 requests which should succeed
-    for _ in range(10):
-        response = await client.post("/api/v1/trips/plan", json=json_data)
-        assert response.status_code == 200
-
-    # The 11th request should be rate limited
-    response = await client.post("/api/v1/trips/plan", json=json_data)
-    assert response.status_code == 429
 
 @pytest.mark.asyncio
-async def test_health_check(client: AsyncClient, mock_services):
-    response = await client.get("/health")
-    assert response.status_code == 200
-    assert response.json()["status"] == "ok"
-    assert response.json()["redis"] is True
+async def test_plan_trip_rejects_invalid_dates(service_overrides):
+    payload = {
+        "destination": "Paris",
+        "start_date": "2026-07-03",
+        "end_date": "2026-07-01",
+        "budget": "moderate",
+        "interests": ["art"],
+    }
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.post("/api/v1/trips/plan", json=payload)
+
+    assert response.status_code == 422

@@ -1,7 +1,6 @@
-// proxy.ts
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const isProtectedRoute = createRouteMatcher(["/api/plan(.*)", "/api/chat(.*)"]);
+const isProtectedRoute = createRouteMatcher(["/api/chat(.*)"]);
 
 export const proxy = clerkMiddleware(async (auth, req) => {
     if (isProtectedRoute(req)) {

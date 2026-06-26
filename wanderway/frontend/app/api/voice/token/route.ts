@@ -11,14 +11,14 @@ export async function POST(req: Request) {
 
         if (!roomName || !username) {
             return NextResponse.json(
-                { error: "roomName and username are required" },
+                { detail: "roomName and username are required" },
                 { status: 400 }
             );
         }
 
         if (!process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) {
             return NextResponse.json(
-                { error: "LiveKit not configured" },
+                { detail: "LiveKit not configured" },
                 { status: 503 }
             );
         }
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
         console.error("Voice token error:", error);
         const message = error instanceof Error ? error.message : "Unknown error";
         return NextResponse.json(
-            { error: "Failed to generate voice token", details: message },
+            { detail: message },
             { status: 500 }
         );
     }

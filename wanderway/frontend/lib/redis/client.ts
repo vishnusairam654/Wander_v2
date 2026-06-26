@@ -4,10 +4,18 @@
 
 import { Redis } from "@upstash/redis";
 
-export const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL!,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+if (!redisUrl || !redisToken) {
+    console.warn(
+        "Upstash Redis not configured. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN."
+    );
+}
+
+export const redis = redisUrl && redisToken
+    ? new Redis({ url: redisUrl, token: redisToken })
+    : null;
 
 const CHAT_TTL = 60 * 60 * 24 * 7; // 7 days in seconds
 
@@ -17,6 +25,7 @@ export interface ChatMessage {
 }
 
 export async function getChatHistory(threadId: string): Promise<ChatMessage[]> {
+    if (!redis) return [];
     try {
         const history = await redis.get<ChatMessage[]>(`chat:${threadId}`);
         return history || [];
@@ -26,6 +35,7 @@ export async function getChatHistory(threadId: string): Promise<ChatMessage[]> {
 }
 
 export async function saveChatHistory(threadId: string, messages: ChatMessage[]): Promise<void> {
+    if (!redis) return;
     try {
         // Keep last 30 messages to avoid context window overflow
         const trimmed = messages.slice(-30);
@@ -37,6 +47,7 @@ export async function saveChatHistory(threadId: string, messages: ChatMessage[])
 }
 
 export async function clearChatHistory(threadId: string): Promise<void> {
+    if (!redis) return;
     try {
         await redis.del(`chat:${threadId}`);
     } catch {

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import {
   MapPin, Utensils, Car, Wallet, Clock, Star, ChevronRight,
   Cloud, Sun, CloudRain, Hotel, Train, Bus, Plane, Bike,
@@ -326,19 +327,24 @@ interface TripResultsProps {
 }
 
 export default function TripResults({ tripData, onEditRequest }: TripResultsProps) {
+  const { userId } = useAuth();
   const [activeDay, setActiveDay] = useState(0); // 0 = overview
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1]));
   const [showAllHotels, setShowAllHotels] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-
+  
   const handleSave = async () => {
-    if (!tripData || isSaving) return;
+    if (!tripData || isSaving || !userId) return;
     setIsSaving(true);
     try {
-      const res = await fetch("/api/trips", {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${baseUrl}/api/v1/trips`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "X-User-Id": userId
+        },
         body: JSON.stringify({ tripData }),
       });
       if (res.ok) {
@@ -351,6 +357,7 @@ export default function TripResults({ tripData, onEditRequest }: TripResultsProp
       setIsSaving(false);
     }
   };
+
 
   if (!tripData) return (
     <div>

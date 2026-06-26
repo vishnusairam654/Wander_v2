@@ -33,7 +33,9 @@ export interface TripRequest {
   end_date: string;
   budget?: 'budget' | 'moderate' | 'luxury';
   interests?: string[];
+  origin?: string;
   number_of_people?: number;
+  total_budget?: number;
   special_requirements?: string;
 }
 

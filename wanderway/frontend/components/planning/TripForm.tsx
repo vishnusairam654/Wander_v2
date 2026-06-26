@@ -6,7 +6,7 @@
 
 import React, { useState } from "react";
 import { ArrowRight, MapPin, Calendar, Users, Wallet, Loader2 } from "lucide-react";
-import { getThreadId } from "@/lib/utils";
+import { budgetTier, planTrip } from "@/lib/backend/trips";
 import type { TripData } from "@/types/trip";
 
 interface TripFormProps {
@@ -39,55 +39,36 @@ const TripForm: React.FC<TripFormProps> = ({ onTripPlanned }) => {
       return;
     }
 
-    // BUG-11 FIX: Validate date order before submitting
-    if (departureDate && returnDate) {
-      const dep = new Date(departureDate);
-      const ret = new Date(returnDate);
-      if (ret <= dep) {
-        setError("Return date must be after the departure date.");
-        return;
-      }
+    if (departureDate && returnDate && new Date(returnDate) <= new Date(departureDate)) {
+      setError("Return date must be after the departure date.");
+      return;
     }
 
     setIsLoading(true);
 
-    const duration = getDuration();
-    const budgetNote = budget ? ` with a total budget of ₹${budget}` : "";
-    const dateNote = departureDate ? ` departing ${departureDate}` : "";
-    const returnNote = returnDate ? `, returning ${returnDate}` : "";
-    const durationNote = duration ? ` for ${duration} days` : "";
-    const originNote = origin ? ` from ${origin}` : "";
-    const message = `Plan a trip${originNote} to ${destination}${durationNote} for ${travelers} traveler(s)${dateNote}${returnNote}${budgetNote}. Include all travel options (flights, trains, buses), hotels, food recommendations, and a full day-by-day itinerary.`;
-
     try {
-      const threadId = getThreadId();
-      const res = await fetch("/api/plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, threadId }),
+      const start = departureDate ? new Date(`${departureDate}T00:00:00`) : new Date();
+      const end = returnDate ? new Date(`${returnDate}T00:00:00`) : new Date(start);
+      if (!returnDate) end.setDate(start.getDate() + 3);
+      const tripDays = Math.max(
+        1,
+        Math.round((end.getTime() - start.getTime()) / 86400000),
+      );
+      const travelerCount = Number.parseInt(travelers, 10);
+      const totalBudget = budget ? Number(budget) : undefined;
+
+      const tripData = await planTrip({
+        origin: origin.trim() || undefined,
+        destination: destination.trim(),
+        start_date: start.toISOString().split("T")[0],
+        end_date: end.toISOString().split("T")[0],
+        number_of_people: travelerCount,
+        total_budget: totalBudget,
+        budget: budgetTier(totalBudget, travelerCount, tripDays),
+        interests: ["sightseeing", "local food", "culture"],
+        special_requirements:
+          "Include practical transport guidance and a balanced day-by-day itinerary.",
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Planning failed");
-
-      const tripData: TripData = {
-        destination: data.destination || destination,
-        duration: data.duration || duration || 3,
-        travelers: data.travelers || parseInt(travelers),
-        plan: data.message,
-        waypoints: data.waypoints || [],
-        budgetBreakdown: data.budgetBreakdown || undefined,
-        totalBudget: data.totalBudget || undefined,
-        perPersonBudget: data.perPersonBudget || undefined,
-        weatherData: data.weatherData || undefined,
-        hotels: data.hotels || undefined,
-        travelOptions: data.travelOptions || undefined,
-        attractions: data.attractions || undefined,
-        itinerary: data.itinerary || undefined,
-        localTransport: data.localTransport || undefined,
-        toolsUsed: data.toolsUsed || [],
-        generatedAt: new Date().toISOString(),
-      };
 
       onTripPlanned?.(tripData);
     } catch (err) {

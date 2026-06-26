@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { X, MapPin, Calendar, Users, Wallet, Clock, Trash2, ExternalLink, Loader2 } from "lucide-react";
-import { useUser } from "@clerk/nextjs";
+import { useUser, useAuth } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import type { TripData } from "@/types/trip";
 
@@ -24,20 +24,28 @@ interface TripHistoryModalProps {
 
 export default function TripHistoryModal({ onClose, onLoadTrip }: TripHistoryModalProps) {
     const { user } = useUser();
+    const { userId } = useAuth();
     const [trips, setTrips] = useState<SavedTrip[]>([]);
     const [loading, setLoading] = useState(true);
     const [deleting, setDeleting] = useState<string | null>(null);
 
     useEffect(() => {
-        fetchTrips();
-    }, []);
+        if (userId) {
+            fetchTrips();
+        } else {
+            setLoading(false);
+        }
+    }, [userId]);
 
     async function fetchTrips() {
         try {
-            const res = await fetch("/api/trips");
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+            const res = await fetch(`${baseUrl}/api/v1/trips`, {
+                headers: { 'X-User-Id': userId || '' }
+            });
             if (res.ok) {
                 const data = await res.json();
-                setTrips(data.trips || []);
+                setTrips(data || []);
             }
         } catch {
             // ignore
@@ -49,7 +57,11 @@ export default function TripHistoryModal({ onClose, onLoadTrip }: TripHistoryMod
     async function deleteTrip(id: string) {
         setDeleting(id);
         try {
-            const res = await fetch(`/api/trips/${id}`, { method: "DELETE" });
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+            const res = await fetch(`${baseUrl}/api/v1/trips/${id}`, { 
+                method: "DELETE",
+                headers: { 'X-User-Id': userId || '' }
+            });
             if (!res.ok) throw new Error("Delete failed");
             setTrips(prev => prev.filter(t => t.id !== id));
         } catch (err) {

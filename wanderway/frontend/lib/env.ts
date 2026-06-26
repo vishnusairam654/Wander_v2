@@ -17,25 +17,14 @@ const PUBLIC_VARS = [
 ] as const;
 
 export function validateEnv() {
-    const missing: string[] = [];
-
-    for (const key of SERVER_VARS) {
-        if (!process.env[key]) missing.push(key);
-    }
-    for (const key of PUBLIC_VARS) {
-        if (!process.env[key]) missing.push(key);
-    }
+    const missing = [...SERVER_VARS, ...PUBLIC_VARS].filter(key => !process.env[key]);
 
     if (missing.length > 0) {
-        const msg = `Missing required environment variables:\n${missing.map(k => `  • ${k}`).join("\n")}\n\nCheck your .env.local file.`;
-        const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
-        // During `next build`, warn so the app can compile without secrets.
-        // At runtime in production, keep the hard failure.
-        if (process.env.NODE_ENV === "production" && !isBuildPhase) {
-            throw new Error(msg);
-        } else {
-            console.warn(`[WanderWay] ⚠️  ${msg}`);
-        }
+        // These values power optional integrations. The core planner talks to
+        // FastAPI through NEXT_PUBLIC_API_URL and must still start without them.
+        console.warn(
+            `[WanderWay] Optional integrations are disabled: ${missing.join(", ")}`
+        );
     }
 }
 

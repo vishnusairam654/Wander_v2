@@ -88,7 +88,75 @@ class CacheService:
             logger.warning(f"Failed to get trip_id mapping: {e}")
             return None
 
+    async def get_user_trips(self, user_id: str) -> list[dict]:
+        """Retrieve the list of saved trips for a user."""
+        if not self.redis:
+            return []
+        try:
+            data = await self.redis.get(f"user_trips:{user_id}")
+            return json.loads(data) if data else []
+        except Exception as e:
+            logger.warning(f"Error retrieving user trips for {user_id}: {e}")
+            return []
+
+    async def save_user_trip(self, user_id: str, trip_summary: dict, ttl: int = 7776000) -> None:
+        """Save a trip summary to the user's history (default 90 days)."""
+        if not self.redis:
+            return
+        try:
+            trips = await self.get_user_trips(user_id)
+            # Deduplicate by ID
+            updated = [t for t in trips if t.get("id") != trip_summary.get("id")]
+            updated.insert(0, trip_summary)
+            # Limit to 20 trips
+            updated = updated[:20]
+            await self.redis.set(f"user_trips:{user_id}", json.dumps(updated), ex=ttl)
+        except Exception as e:
+            logger.warning(f"Error saving user trip for {user_id}: {e}")
+
+    async def delete_user_trip(self, user_id: str, trip_id: str) -> None:
+        """Remove a trip from the user's history."""
+        if not self.redis:
+            return
+        try:
+            trips = await self.get_user_trips(user_id)
+            updated = [t for t in trips if t.get("id") != trip_id]
+            await self.redis.set(f"user_trips:{user_id}", json.dumps(updated))
+        except Exception as e:
+            logger.warning(f"Error deleting user trip {trip_id} for {user_id}: {e}")
+
+    async def get_chat_history(self, thread_id: str) -> list[dict]:
+        """Retrieve chat history for a thread."""
+        if not self.redis:
+            return []
+        try:
+            data = await self.redis.get(f"chat:{thread_id}")
+            return json.loads(data) if data else []
+        except Exception as e:
+            logger.warning(f"Error retrieving chat history for {thread_id}: {e}")
+            return []
+
+    async def save_chat_history(self, thread_id: str, messages: list[dict]) -> None:
+        """Save chat history for a thread (keep last 30)."""
+        if not self.redis:
+            return
+        try:
+            trimmed = messages[-30:]
+            await self.redis.set(f"chat:{thread_id}", json.dumps(trimmed), ex=604800) # 7 days
+        except Exception as e:
+            logger.warning(f"Error saving chat history for {thread_id}: {e}")
+
+    async def clear_chat_history(self, thread_id: str) -> None:
+        """Delete chat history for a thread."""
+        if not self.redis:
+            return
+        try:
+            await self.redis.delete(f"chat:{thread_id}")
+        except Exception as e:
+            logger.warning(f"Error clearing chat history for {thread_id}: {e}")
+
     async def health_check(self) -> bool:
+
         """Check if Redis is available."""
         if not self.redis:
             return False

@@ -1,9 +1,3 @@
-// app/layout.tsx
-// BUG-17 FIX: Removed non-standard `ui` prop on ClerkProvider — not in Clerk docs,
-//             can throw at runtime depending on version.
-// BUG-28 FIX: Removed `import { ui } from "@clerk/ui"` — package version may not
-//             export `ui`, causing a build-time crash.
-
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
@@ -11,7 +5,6 @@ import "./globals.css";
 import { FONTS } from "@/lib/fonts";
 import { validateEnv } from "@/lib/env";
 
-// Validate required environment variables at startup (BUG-18)
 if (typeof window === "undefined") {
   validateEnv();
 }

@@ -12,7 +12,12 @@ def test_generate_pdf():
                 day_number=1,
                 theme="Beach",
                 activities=[
-                    Activity(title="Baga Beach", estimated_cost=100)
+                    Activity(
+                        time="09:00",
+                        title="Baga Beach",
+                        description="Relax by the sea.",
+                        estimated_cost=100,
+                    )
                 ]
             )
         ]

@@ -6,11 +6,11 @@ client = TestClient(app)
 
 def test_cors_headers():
     response = client.options(
-        "/api/health",
+        "/health/",
         headers={
-            "Origin": "https://wanderway-taupe.vercel.app",
+            "Origin": "http://localhost:3000",
             "Access-Control-Request-Method": "GET"
         }
     )
     assert response.status_code == 200
-    assert response.headers.get("access-control-allow-origin") == "https://wanderway-taupe.vercel.app"
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"

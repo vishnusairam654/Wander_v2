@@ -4,9 +4,15 @@ from app.core.cache import CacheService
 from app.models.trip import TripRequest, TripResponse
 
 def test_make_cache_key():
-    req1 = TripRequest(destination="Paris", days=5, budget="moderate", interests=["art"])
-    req2 = TripRequest(destination="Paris", days=5, budget="moderate", interests=["art"])
-    req3 = TripRequest(destination="London", days=5, budget="moderate", interests=["art"])
+    common = {
+        "start_date": "2026-07-01",
+        "end_date": "2026-07-06",
+        "budget": "moderate",
+        "interests": ["art"],
+    }
+    req1 = TripRequest(destination="Paris", **common)
+    req2 = TripRequest(destination="Paris", **common)
+    req3 = TripRequest(destination="London", **common)
     
     service = CacheService()
     
@@ -22,7 +28,24 @@ async def test_cache_methods():
     service.redis = AsyncMock()
     
     # test get_cached_trip
-    mock_trip = TripResponse(id="123", plan="Paris trip")
+    mock_trip = TripResponse(
+        id="123",
+        destination="Paris",
+        start_date="2026-07-01",
+        end_date="2026-07-02",
+        itinerary=[
+            {
+                "day_number": 1,
+                "activities": [
+                    {
+                        "time": "09:00",
+                        "title": "Louvre",
+                        "description": "Visit the museum.",
+                    }
+                ],
+            }
+        ],
+    )
     service.redis.get.return_value = mock_trip.model_dump_json()
     
     result = await service.get_cached_trip("test_key")

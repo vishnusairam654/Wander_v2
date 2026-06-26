@@ -7,7 +7,7 @@ from slowapi.errors import RateLimitExceeded
 from app.config import get_settings
 from app.core.limiter import limiter, rate_limit_exceeded_handler
 from app.core.cache import cache_service
-from app.api.routes import trips, stream, health
+from app.api.routes import trips, stream, health, chat
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -41,6 +41,7 @@ app.add_middleware(
 # Include routers
 app.include_router(trips.router, prefix="/api/v1/trips", tags=["Trips"])
 app.include_router(stream.router, prefix="/api/v1/stream", tags=["Stream"])
+app.include_router(chat.router, prefix="/api/v1/chat", tags=["Chat"])
 app.include_router(health.router, prefix="/health", tags=["Health"])
 
 @app.get("/", tags=["Root"])

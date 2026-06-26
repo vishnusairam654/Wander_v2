@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getThreadId } from "@/lib/utils";
 import { VoiceButton, VoiceBanner } from "@/components/voice/VoiceButton";
+import { planTrip, requestFromPlanningMessage } from "@/lib/backend/trips";
 import type { TripData, Waypoint } from "@/types/trip";
 
 interface Message {
@@ -122,113 +123,53 @@ const ChatBot: React.FC<ChatBotProps> = ({
 
     const userMessage = messageText.trim();
     const isPlanning = isPlanningRequest(userMessage);
-
     setMessages(prev => [...prev, { role: "user", content: userMessage }]);
     setIsLoading(true);
 
-    if (isPlanning) {
-      setPlanningStatus("🔍 Searching attractions...");
-    }
-
     try {
-      const endpoint = isPlanning ? "/api/plan" : "/api/chat";
-      const body = isPlanning
-        ? { message: userMessage, threadId: threadId.current }
-        : {
-          messages: [
-            ...messages.map(m => ({ role: m.role, content: m.content })),
-            { role: "user", content: userMessage },
-          ],
-          threadId: threadId.current,
-        };
-
       if (isPlanning) {
         const statuses = [
-          "🌤️ Checking weather...",
-          "🚂 Finding all travel options (trains, flights, buses)...",
-          "🏨 Searching hotels...",
-          "🍽️ Finding restaurants...",
-          "💰 Calculating budget...",
-          "📍 Building your itinerary...",
+          "Understanding your travel preferences...",
+          "Building a geographically sensible route...",
+          "Balancing activities and downtime...",
+          "Finalizing your itinerary...",
         ];
         let idx = 0;
+        setPlanningStatus(statuses[idx++]);
         const interval = setInterval(() => {
           if (idx < statuses.length) setPlanningStatus(statuses[idx++]);
         }, 3000);
 
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-
-        clearInterval(interval);
-        setPlanningStatus("");
-
-        if (!response.ok) {
-          if (response.status === 401) {
-            clerk.openSignIn();
-            // Rollback the optimistic UI message
-            setMessages(prev => prev.slice(0, -1));
-            return;
-          }
-          const text = await response.text();
-          console.error("API Error:", text);
-          throw new Error("API failed: " + text);
-        }
-
-        const data = await response.json();
-
-        if (data.message) {
-          const newMsg: Message = {
-            role: "assistant",
-            content: data.message,
-            toolsUsed: data.toolsUsed,
-            waypoints: data.waypoints,
-            isPlanning: true,
-          };
-          setMessages(prev => [...prev, newMsg]);
-
-          if (onTripDataUpdate) {
-            const tripData: TripData = {
-              destination: data.destination || "Unknown",
-              duration: data.duration || 3,
-              travelers: data.travelers || 2,
-              plan: data.message,
-              waypoints: data.waypoints || [],
-              budgetBreakdown: data.budgetBreakdown || undefined,
-              totalBudget: data.totalBudget || undefined,
-              perPersonBudget: data.perPersonBudget || undefined,
-              weatherData: data.weatherData || undefined,
-              hotels: data.hotels || undefined,
-              travelOptions: data.travelOptions || undefined,
-              attractions: data.attractions || undefined,
-              itinerary: data.itinerary || undefined,
-              localTransport: data.localTransport || undefined,
-              toolsUsed: data.toolsUsed || [],
-              generatedAt: new Date().toISOString(),
-            };
-            onTripDataUpdate(tripData);
-          }
-
-          if (data.waypoints?.length > 0 && onWaypointsUpdate) {
-            onWaypointsUpdate(data.waypoints);
-          }
-        } else {
-          const errorMessage = data.details || data.error || "Planning failed";
+        try {
+          const tripData = await planTrip(requestFromPlanningMessage(userMessage));
           setMessages(prev => [
             ...prev,
             {
               role: "assistant",
-              content: `I couldn't complete the trip plan right now. ${errorMessage}`,
+              content: tripData.plan,
+              toolsUsed: tripData.toolsUsed,
+              waypoints: tripData.waypoints,
+              isPlanning: true,
             },
           ]);
+          onTripDataUpdate?.(tripData);
+          if (tripData.waypoints.length > 0) {
+            onWaypointsUpdate?.(tripData.waypoints);
+          }
+        } finally {
+          clearInterval(interval);
         }
       } else {
-        const response = await fetch(endpoint, {
+        const response = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
+          body: JSON.stringify({
+            messages: [
+              ...messages.map(m => ({ role: m.role, content: m.content })),
+              { role: "user", content: userMessage },
+            ],
+            threadId: threadId.current,
+          }),
         });
 
         if (!response.ok) {
@@ -237,41 +178,35 @@ const ChatBot: React.FC<ChatBotProps> = ({
             setMessages(prev => prev.slice(0, -1));
             return;
           }
-          const text = await response.text();
-          console.error("API Error:", text);
-          throw new Error("API failed: " + text);
+          throw new Error(await response.text());
         }
 
         const data = await response.json();
-        if (data.message) {
-          setMessages(prev => [...prev, { role: "assistant", content: data.message }]);
-        } else {
-          setMessages(prev => [
-            ...prev,
-            {
-              role: "assistant",
-              content: `I couldn't complete that request. ${data.details || data.error || "Something went wrong"}`,
-            },
-          ]);
-        }
+        setMessages(prev => [
+          ...prev,
+          {
+            role: "assistant",
+            content: data.detail || data.message || "I couldn't complete that request.",
+          },
+        ]);
       }
     } catch (error) {
       console.error("Chat Error:", error);
-      setPlanningStatus("");
       setMessages(prev => [
         ...prev,
         {
           role: "assistant",
           content:
-            "I'm having trouble connecting right now. Please check your API keys are configured and try again.",
+            error instanceof Error
+              ? `I couldn't complete that request. ${error.message}`
+              : "I'm having trouble connecting right now. Please try again.",
         },
       ]);
     } finally {
       setIsLoading(false);
       setPlanningStatus("");
     }
-    // BUG-09 FIX: `input` removed from deps. Full dep list:
-  }, [isLoading, messages, onTripDataUpdate, onWaypointsUpdate]);
+  }, [clerk, isLoading, messages, onTripDataUpdate, onWaypointsUpdate]);
 
   const handleSend = useCallback(() => {
     handleSendMessage(input);
@@ -440,7 +375,7 @@ const ChatBot: React.FC<ChatBotProps> = ({
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
             placeholder="Plan a trip or ask anything..."
-            className="flex-1 bg-transparent border-none focus:ring-0 text-sm px-3 py-2 text-foreground placeholder:text-muted-foreground/60 font-milkywalky"
+            className="flex-1 bg-transparent border-none focus:ring-0 text-sm px-3 py-2 text-foreground placeholder:text-muted-foreground/60 font-sans"
           />
           <button
             suppressHydrationWarning

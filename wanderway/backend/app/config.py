@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     cache_ttl: int = 3600
     
     gemini_api_key: str = ""
-    mock_apis: bool = False
+    gemini_model: str = "gemini-2.5-flash"
 
 @lru_cache()
 def get_settings() -> Settings:

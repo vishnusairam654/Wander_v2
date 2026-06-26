@@ -100,7 +100,7 @@ export function TripDisplay({ trip }: TripDisplayProps) {
 
                     {activity.estimated_cost !== undefined && (
                       <div className="mt-2 text-sm text-green-700 font-medium">
-                        Estimated cost: ${activity.estimated_cost}
+                        Estimated cost: ₹{activity.estimated_cost}
                       </div>
                     )}
                   </div>

@@ -27,7 +27,7 @@ import { TripRequest } from '../lib/api';
 import StreamingTripDisplay from './StreamingTripDisplay';
 
 // Fallback Mapbox options in case the hook isn't fully implemented yet
-const MOCK_DESTINATIONS = ['Paris, France', 'Tokyo, Japan', 'New York City, USA', 'Rome, Italy', 'Bali, Indonesia'];
+const MOCK_DESTINATIONS = ['Goa, India', 'Udupi, Karnataka', 'Kannur, Kerala', 'Manali, Himachal Pradesh', 'Jaipur, Rajasthan', 'Hyderabad, Telangana'];
 
 const INTERESTS_PRESETS = [
   'Food', 'Culture', 'Adventure', 'Nature', 
@@ -260,9 +260,11 @@ export default function PlanningWizard() {
                               variant={budget === btn.label ? 'contained' : 'outlined'}
                               onClick={() => setBudget(btn.label as 'Budget' | 'Mid-Range' | 'Luxury')}
                               size="large"
+                              aria-label={`${btn.label} travel budget`}
                               sx={{ flexGrow: 1, textTransform: 'none', minWidth: 140 }}
                             >
-                              {btn.emoji} {btn.label}
+                              <span aria-hidden="true" style={{ marginRight: '8px' }}>{btn.emoji}</span>
+                              {btn.label}
                             </Button>
                           ))}
                         </Stack>

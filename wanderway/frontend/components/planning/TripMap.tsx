@@ -5,6 +5,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 import type { Waypoint } from "@/types/trip";
+import { supabase } from "@/lib/supabase/client";
 
 interface TripMapProps {
   waypoints?: Waypoint[];
@@ -52,12 +53,12 @@ export default function TripMap({ waypoints: externalWaypoints = [], tripId }: T
 
   // Subscribe to Supabase Realtime for live waypoint updates
   useEffect(() => {
-    if (!tripId) return;
+    if (!tripId || !supabase) return;
 
-    let channel: ReturnType<typeof import("@/lib/supabase/client").supabase.channel> | null = null;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
     async function subscribe() {
-      const { supabase } = await import("@/lib/supabase/client");
+      if (!supabase) return;
       channel = supabase
         .channel(`trip-waypoints-${tripId}`)
         .on(

@@ -3,6 +3,7 @@
 // Uses Redis history + Groq with tool support.
 
 import { NextResponse } from "next/server";
+import { Groq } from "groq-sdk";
 import { chatWithAssistant } from "@/lib/ai/agent";
 import { getChatHistory, saveChatHistory } from "@/lib/redis/client";
 
@@ -32,11 +33,10 @@ export async function POST(req: Request) {
     }
 
     // Legacy format — direct messages array (used by original ChatBot.tsx)
-    const { Groq } = await import("groq-sdk");
     const groqApiKey = process.env.GROQ_API_KEY ?? process.env.GROQ_API;
     if (!groqApiKey) {
       return NextResponse.json(
-        { error: "Groq is not configured. Set GROQ_API_KEY or GROQ_API." },
+        { detail: "Groq is not configured. Set GROQ_API_KEY or GROQ_API." },
         { status: 500 }
       );
     }
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     console.error("Chat API Error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to fetch from Groq AI", details: message },
+      { detail: message },
       { status: 500 }
     );
   }

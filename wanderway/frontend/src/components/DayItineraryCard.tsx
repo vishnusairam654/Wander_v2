@@ -165,7 +165,7 @@ export default function DayItineraryCard({ day, index = 0 }: DayItineraryCardPro
                         color="primary"
                         sx={{
                           '&:hover': {
-                            bgcolor: 'primary.50'
+                            bgcolor: 'action.hover'
                           }
                         }}
                       />
@@ -181,7 +181,7 @@ export default function DayItineraryCard({ day, index = 0 }: DayItineraryCardPro
               <Typography variant="body2" color="text.secondary" sx={{ mr: 1.5 }}>
                 Est. Daily Cost:
               </Typography>
-              <Badge badgeContent={`$${totalCost}`} color="secondary" showZero sx={{ '& .MuiBadge-badge': { fontSize: '0.85rem', height: 24, minWidth: 24, px: 1 } }}>
+              <Badge badgeContent={`₹${totalCost}`} color="secondary" showZero sx={{ '& .MuiBadge-badge': { fontSize: '0.85rem', height: 24, minWidth: 24, px: 1 } }}>
                 <PaidIcon color="action" />
               </Badge>
             </Box>
@@ -229,7 +229,7 @@ export default function DayItineraryCard({ day, index = 0 }: DayItineraryCardPro
             {selectedActivity.estimated_cost !== undefined && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, color: 'text.secondary' }}>
                 <PaidIcon fontSize="small" />
-                <Typography variant="body2">${selectedActivity.estimated_cost}</Typography>
+                <Typography variant="body2">₹{selectedActivity.estimated_cost}</Typography>
               </Box>
             )}
 
