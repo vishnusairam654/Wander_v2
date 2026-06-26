@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import {
   Sparkles,
   MapPin,
@@ -23,7 +23,8 @@ import { useUser } from "@clerk/nextjs";
 import TripMap from "./TripMap";
 import ChatBot from "./ChatBot";
 import TripResults from "./TripResults";
-import { budgetTier, planTrip, requestFromPlanningMessage } from "@/lib/backend/trips";
+import { requestFromPlanningMessage } from "@/lib/backend/trips";
+import { useStreamingTrip } from "@/lib/hooks/useStreamingTrip";
 import type { TripData, Waypoint } from "@/types/trip";
 
 interface ModernTripPlannerProps {
@@ -33,6 +34,14 @@ interface ModernTripPlannerProps {
   pendingMessage?: string;
   onPendingMessageConsumed?: () => void;
 }
+
+const STATUS_STEPS = [
+  "Understanding your travel preferences...",
+  "Searching for the best destinations...",
+  "Building a geographically sensible route...",
+  "Balancing activities and downtime...",
+  "Finalizing your itinerary...",
+];
 
 export default function ModernTripPlanner({
   onTripPlanned,
@@ -45,7 +54,6 @@ export default function ModernTripPlanner({
   const [prompt, setPrompt] = useState("");
   const [activeBudget, setActiveBudget] = useState("Moderate");
   const [activeStyle, setActiveStyle] = useState("Couple");
-  const [isGenerating, setIsGenerating] = useState(false);
   const [showItinerary, setShowItinerary] = useState(false);
   const [destinationInput, setDestinationInput] = useState("");
   const [travelers, setTravelers] = useState("2");
@@ -55,42 +63,41 @@ export default function ModernTripPlanner({
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [statusStep, setStatusStep] = useState(0);
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  const handleGenerate = async () => {
-    if ((!prompt || !prompt.trim()) && !showItinerary) return;
-    setIsGenerating(true);
+  const { isStreaming, progress, startStream, reset: resetStream } = useStreamingTrip();
+
+  const doGenerate = async (promptText: string) => {
+    setShowItinerary(false);
+    setStatusStep(0);
+    const statusInterval = setInterval(() => {
+      setStatusStep((prev) => Math.min(prev + 1, STATUS_STEPS.length - 1));
+    }, 3000);
 
     try {
-      const tripData = await planTrip(requestFromPlanningMessage(prompt || `Plan a trip to ${destinationInput || "Goa"} for ${travelers} people with ${activeBudget.toLowerCase()} budget`));
-      onTripPlanned?.(tripData);
+      const data = await startStream(requestFromPlanningMessage(promptText));
+      clearInterval(statusInterval);
+      onTripPlanned?.(data);
       setShowItinerary(true);
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 100);
     } catch (error) {
+      clearInterval(statusInterval);
       console.error("Trip planning failed:", error);
-    } finally {
-      setIsGenerating(false);
     }
   };
 
-  const handleQuickStyleSubmit = async () => {
+  const handleGenerate = () => {
+    if ((!prompt || !prompt.trim()) && !showItinerary) return;
+    doGenerate(prompt || `Plan a trip to ${destinationInput || "Goa"} for ${travelers} people with ${activeBudget.toLowerCase()} budget`);
+  };
+
+  const handleQuickStyleSubmit = () => {
     const promptText = `Plan a ${activeStyle.toLowerCase()} trip to ${destinationInput || "Goa"} with ${activeBudget.toLowerCase()} budget for ${travelers} people`;
     setPrompt(promptText);
-    setIsGenerating(true);
-    try {
-      const tripData = await planTrip(requestFromPlanningMessage(promptText));
-      onTripPlanned?.(tripData);
-      setShowItinerary(true);
-      setTimeout(() => {
-        resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 100);
-    } catch (error) {
-      console.error("Trip planning failed:", error);
-    } finally {
-      setIsGenerating(false);
-    }
+    doGenerate(promptText);
   };
 
   const handleSaveTrip = async () => {
@@ -158,23 +165,39 @@ export default function ModernTripPlanner({
         <div className="w-full max-w-3xl relative group z-10">
           <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full blur-xl opacity-20 group-hover:opacity-30 transition-opacity duration-500"></div>
           <div className="relative bg-white border border-gray-200 rounded-full shadow-xl flex items-center p-2 pl-6 transition-transform group-hover:scale-[1.01] duration-300">
-            <Sparkles className="text-indigo-500 mr-3" size={24} />
+            <Sparkles className="text-indigo-500 mr-3 shrink-0" size={24} />
             <input
               type="text"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
               placeholder="e.g. A 5-day romantic getaway to Kyoto with a moderate budget..."
-              className="flex-grow bg-transparent outline-none text-lg text-gray-800 placeholder:text-gray-400 py-4"
+              className="flex-grow bg-transparent outline-none text-lg text-gray-800 placeholder:text-gray-400 py-4 min-w-0"
             />
             <button
               onClick={handleGenerate}
-              disabled={isGenerating || !prompt.trim()}
-              className="bg-indigo-600 text-white p-4 rounded-full hover:bg-indigo-700 transition-colors shadow-md ml-2 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed"
+              disabled={isStreaming || !prompt.trim()}
+              className="bg-indigo-600 text-white p-4 rounded-full hover:bg-indigo-700 transition-colors shadow-md ml-2 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed shrink-0"
             >
-              {isGenerating ? <Loader2 size={24} className="animate-spin" /> : <ArrowRight size={24} />}
+              {isStreaming ? <Loader2 size={24} className="animate-spin" /> : <ArrowRight size={24} />}
             </button>
           </div>
+
+          {/* Streaming progress bar */}
+          {isStreaming && (
+            <div className="mt-6 w-full max-w-md mx-auto text-center animate-fade-in-up">
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <Loader2 size={18} className="animate-spin text-indigo-600" />
+                <span className="text-sm font-medium text-gray-600">{STATUS_STEPS[statusStep]}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${((statusStep + 1) / STATUS_STEPS.length) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Step-by-Step Configuration */}
@@ -247,9 +270,14 @@ export default function ModernTripPlanner({
               </div>
               <button
                 onClick={handleQuickStyleSubmit}
-                className="mt-3 w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition shadow-md"
+                disabled={isStreaming || !destinationInput.trim()}
+                className="mt-3 w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition shadow-md disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Generate Trip
+                {isStreaming ? (
+                  <><Loader2 size={16} className="animate-spin" /> Planning...</>
+                ) : (
+                  "Generate Trip"
+                )}
               </button>
             </div>
           </div>
