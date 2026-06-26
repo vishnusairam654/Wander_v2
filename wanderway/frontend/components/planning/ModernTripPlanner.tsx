@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import TripMap from "./TripMap";
 import ChatBot from "./ChatBot";
+import TripResults from "./TripResults";
 import { budgetTier, planTrip, requestFromPlanningMessage } from "@/lib/backend/trips";
 import type { TripData, Waypoint } from "@/types/trip";
 
@@ -257,6 +258,11 @@ export default function ModernTripPlanner({
                   <TripMap waypoints={waypoints} />
                 </div>
               </div>
+            </div>
+
+            {/* Trip Results Section - Full structured data display */}
+            <div className="mt-16">
+              <TripResults tripData={tripData} onEditRequest={onPendingMessageConsumed} />
             </div>
           </div>
         )}

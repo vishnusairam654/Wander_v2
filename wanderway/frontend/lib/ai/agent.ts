@@ -1,5 +1,10 @@
 // lib/ai/agent.ts
-// Agentic loop powered by Groq (llama-3.3-70b-versatile with tool use)
+// DEPRECATED: This agentic planner is NOT used in production.
+// The app uses FastAPI + Gemini backend for trip planning (lib/backend/trips.ts).
+// This file is kept for reference but planTrip() is dead code.
+// TODO: Either wire this up to ChatBot.tsx or delete in next cleanup.
+//
+// Original purpose: Agentic loop powered by Groq (llama-3.3-70b-versatile with tool use)
 // Captures ALL tool results for structured display in TripResults.
 
 import { Groq } from "groq-sdk";
