@@ -88,7 +88,7 @@ export default function TripMap({ waypoints: externalWaypoints = [], tripId }: T
 
   // Render markers when waypoints change
   useEffect(() => {
-    if (!map.current) return;
+    if (!map.current || !map.current.isStyleLoaded()) return;
 
     // Remove old markers
     markers.current.forEach(m => m.remove());
@@ -138,17 +138,20 @@ export default function TripMap({ waypoints: externalWaypoints = [], tripId }: T
 
       const marker = new mapboxgl.Marker({ element: el, anchor: "bottom" })
         .setLngLat([wp.longitude, wp.latitude])
-        .setPopup(popup)
-        .addTo(map.current!);
+        .setPopup(popup);
 
-      markers.current.push(marker);
-      bounds.extend([wp.longitude, wp.latitude]);
+      // Only add to map if map is ready
+      if (map.current?.isStyleLoaded()) {
+        marker.addTo(map.current);
+        markers.current.push(marker);
+        bounds.extend([wp.longitude, wp.latitude]);
+      }
     });
 
     // Fit map to show all waypoints
-    if (waypoints.length > 1) {
+    if (waypoints.length > 1 && markers.current.length > 0) {
       map.current.fitBounds(bounds, { padding: 80, maxZoom: 12, duration: 1500 });
-    } else if (waypoints.length === 1) {
+    } else if (waypoints.length === 1 && markers.current.length > 0) {
       map.current.flyTo({
         center: [waypoints[0].longitude, waypoints[0].latitude],
         zoom: 11,
@@ -159,8 +162,6 @@ export default function TripMap({ waypoints: externalWaypoints = [], tripId }: T
     // Draw route line between waypoints
     if (waypoints.length > 1 && map.current.isStyleLoaded()) {
       drawRoute(waypoints);
-    } else if (waypoints.length > 1) {
-      map.current.on("load", () => drawRoute(waypoints));
     }
   }, [waypoints]);
 

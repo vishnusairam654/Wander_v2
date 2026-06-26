@@ -1,9 +1,10 @@
 """API endpoints for trip management."""
+import logging
 from fastapi import APIRouter, Request, HTTPException, Depends, Header
 from fastapi.responses import Response
 from app.models.trip import TripRequest, TripResponse
 from app.core.cache import CacheService
-from app.core.gemini import GeminiService
+from app.core.gemini import GeminiService, GeminiServiceError
 from app.services.pdf import PDFService
 from app.services.planner import PlannerService
 from app.core.limiter import limiter
@@ -65,7 +66,24 @@ async def plan_trip(
     gemini: GeminiService = Depends(get_gemini),
     planner: PlannerService = Depends(get_planner)
 ) -> TripResponse:
-    return await planner.plan_trip(trip_request, cache, settings.cache_ttl, gemini)
+    try:
+        return await planner.plan_trip(trip_request, cache, settings.cache_ttl, gemini)
+    except GeminiServiceError as e:
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Gemini service error: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Itinerary service temporarily unavailable. Please try again later."
+        ) from e
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.exception(f"Unexpected error in plan_trip: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred while planning your trip."
+        ) from e
 
 @router.get("/{trip_id}")
 async def get_trip(

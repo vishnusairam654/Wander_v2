@@ -1,5 +1,7 @@
 import type { TripData } from "@/types/trip";
 
+const isMock = process.env.NEXT_PUBLIC_MOCK_APIS === "true";
+
 export type BudgetTier = "budget" | "moderate" | "luxury";
 
 export interface BackendTripRequest {
@@ -43,7 +45,59 @@ const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 ).replace(/\/$/, "");
 
+async function mockPlanTrip(request: BackendTripRequest): Promise<TripData> {
+  const days = Math.max(1, Math.round(
+    (new Date(request.end_date).getTime() - new Date(request.start_date).getTime()) / 86400000,
+  ));
+
+  const itinerary: BackendDay[] = [];
+  const categories = request.interests.length ? request.interests : ["sightseeing", "local food"];
+
+  for (let day = 1; day <= days; day++) {
+    const dayCategories = categories.slice((day - 1) % categories.length, (day - 1) % categories.length + 2);
+    const activities: BackendActivity[] = [
+      {
+        time: "09:00",
+        title: `Morning ${dayCategories[0] || "exploration"}`,
+        description: `Enjoy ${dayCategories[0] || "local sights"} in ${request.destination}`,
+        location: request.destination,
+        estimated_cost: 500,
+        latitude: 15.2993,
+        longitude: 74.124,
+        category: dayCategories[0],
+      },
+      {
+        time: "13:00",
+        title: "Lunch at local restaurant",
+        description: "Authentic regional cuisine",
+        location: request.destination,
+        estimated_cost: 800,
+        latitude: 15.2993,
+        longitude: 74.124,
+        category: "food",
+      },
+      {
+        time: "16:00",
+        title: `Afternoon ${dayCategories[1] || "activity"}`,
+        description: `${dayCategories[1] || "Relaxing"} experience in ${request.destination}`,
+        location: request.destination,
+        estimated_cost: 600,
+        latitude: 15.2993,
+        longitude: 74.124,
+        category: dayCategories[1],
+      },
+    ];
+    itinerary.push({ day_number: day, date: request.start_date, theme: `Day ${day} in ${request.destination}`, activities });
+  }
+
+  return toTripData({ destination: request.destination, start_date: request.start_date, end_date: request.end_date, itinerary }, request.number_of_people);
+}
+
 export async function planTrip(request: BackendTripRequest): Promise<TripData> {
+  if (isMock) {
+    return mockPlanTrip(request);
+  }
+
   const response = await fetch(`${API_BASE_URL}/api/v1/trips/plan`, {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json" },

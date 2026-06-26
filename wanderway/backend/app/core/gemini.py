@@ -1,8 +1,9 @@
 """Gemini-backed itinerary generation."""
 import logging
+import re
 from collections.abc import AsyncIterator
+from typing import Optional
 
-from fastapi import HTTPException
 from google import genai
 from google.genai import types
 
@@ -12,23 +13,37 @@ from app.models.trip import TripRequest, TripResponse
 logger = logging.getLogger(__name__)
 
 
+class GeminiServiceError(Exception):
+    """Custom exception for Gemini service errors."""
+    pass
+
+
 class GeminiService:
     def __init__(self) -> None:
         settings = get_settings()
         self.model = settings.gemini_model
         self._api_key = settings.gemini_api_key
-        self._client: genai.Client | None = None
+        self._client: Optional[genai.Client] = None
 
     @property
     def client(self) -> genai.Client:
         if not self._api_key:
-            raise HTTPException(
-                status_code=503,
-                detail="Gemini is not configured. Set GEMINI_API_KEY on the backend.",
-            )
+            raise GeminiServiceError("Gemini API key not configured")
         if self._client is None:
             self._client = genai.Client(api_key=self._api_key)
         return self._client
+
+    @staticmethod
+    def _sanitize_for_log(text: str) -> str:
+        """Remove potentially sensitive information from logs."""
+        if not text:
+            return ""
+        # Truncate long texts
+        if len(text) > 200:
+            text = text[:200] + "..."
+        # Mask potential API keys
+        text = re.sub(r'[A-Za-z0-9]{32,}', '[REDACTED]', text)
+        return text
 
     @staticmethod
     def _prompt(request: TripRequest) -> str:
@@ -85,14 +100,13 @@ The response destination and dates must exactly match the traveler input.
             trip.start_date = request.start_date.isoformat()
             trip.end_date = request.end_date.isoformat()
             return trip
-        except HTTPException:
+        except GeminiServiceError:
             raise
         except Exception as exc:
-            logger.exception("Gemini trip generation failed")
-            raise HTTPException(
-                status_code=502,
-                detail="The itinerary provider could not generate a trip. Please try again.",
-            ) from exc
+            # Sanitize logs to prevent PII leakage
+            sanitized_request = self._sanitize_for_log(str(request))
+            logger.error(f"Gemini trip generation failed: {exc}", extra={"request_summary": sanitized_request})
+            raise GeminiServiceError("Itinerary generation failed") from exc
 
     async def plan_trip_stream(self, request: TripRequest) -> AsyncIterator[str]:
         """Stream structured JSON chunks directly from Gemini."""
@@ -105,11 +119,8 @@ The response destination and dates must exactly match the traveler input.
             async for chunk in stream:
                 if chunk.text:
                     yield chunk.text
-        except HTTPException:
+        except GeminiServiceError:
             raise
         except Exception as exc:
             logger.exception("Gemini trip streaming failed")
-            raise HTTPException(
-                status_code=502,
-                detail="The itinerary provider could not stream a trip. Please try again.",
-            ) from exc
+            raise GeminiServiceError("Itinerary streaming failed") from exc
