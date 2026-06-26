@@ -49,11 +49,12 @@ async def chat(
         logger.exception("Chat generation failed")
         raise HTTPException(status_code=502, detail="AI service unavailable")
 
-    # 4. Update history
-    updated_messages = full_context + [
+    # 4. Update history - append ONLY the new exchange (not duplicating messages)
+    new_exchange = [
         {"role": "user", "content": messages[-1]["content"]},
         {"role": "assistant", "content": answer}
     ]
+    updated_messages = history + new_exchange
     await cache.save_chat_history(thread_id, updated_messages)
 
     return {"message": answer}

@@ -10,23 +10,29 @@ from app.services.planner import PlannerService
 from app.core.limiter import limiter
 from app.config import Settings, get_settings
 from app.api.deps import get_cache, get_gemini, get_planner
+from app.api.auth import get_current_user
 from typing import List, Optional
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 @router.get("/")
 async def list_user_trips(
-    x_user_id: str = Header(...), 
+    current_user: str = Depends(get_current_user),
     cache: CacheService = Depends(get_cache)
 ) -> List[dict]:
-    return await cache.get_user_trips(x_user_id)
+    """List all trips for the authenticated user."""
+    return await cache.get_user_trips(current_user)
+
 
 @router.post("/")
 async def save_user_trip(
     request: Request,
-    x_user_id: str = Header(...),
+    current_user: str = Depends(get_current_user),
     cache: CacheService = Depends(get_cache)
 ) -> dict:
+    """Save a trip to the authenticated user's history."""
     body = await request.json()
     trip_data = body.get("tripData")
     if not trip_data:
@@ -35,7 +41,7 @@ async def save_user_trip(
     import uuid
     trip_summary = {
         "id": trip_data.get("id", f"trip-{uuid.uuid4()}"),
-        "userId": x_user_id,
+        "userId": current_user,  # Use verified user ID
         "destination": trip_data.get("destination", "Unknown"),
         "duration": trip_data.get("duration", 0),
         "travelers": trip_data.get("travelers", 1),
@@ -44,16 +50,18 @@ async def save_user_trip(
         "tripData": trip_data,
     }
     
-    await cache.save_user_trip(x_user_id, trip_summary)
+    await cache.save_user_trip(current_user, trip_summary)
     return {"trip": trip_summary, "message": "Trip saved!"}
+
 
 @router.delete("/{trip_id}")
 async def delete_user_trip(
     trip_id: str,
-    x_user_id: str = Header(...),
+    current_user: str = Depends(get_current_user),
     cache: CacheService = Depends(get_cache)
 ):
-    await cache.delete_user_trip(x_user_id, trip_id)
+    """Delete a trip from the authenticated user's history."""
+    await cache.delete_user_trip(current_user, trip_id)
     return {"message": "Trip deleted"}
 
 @router.post("/plan")

@@ -8,8 +8,6 @@ import {
   Users,
   Wallet,
   ArrowRight,
-  Menu,
-  Heart,
   Globe2,
   Map,
   Clock,
@@ -17,10 +15,7 @@ import {
   Camera,
   Navigation,
   Loader2,
-  Send,
-  Bot,
 } from "lucide-react";
-import { useClerk } from "@clerk/nextjs";
 import TripMap from "./TripMap";
 import ChatBot from "./ChatBot";
 import { budgetTier, planTrip, requestFromPlanningMessage } from "@/lib/backend/trips";
@@ -41,7 +36,6 @@ export default function ModernTripPlanner({
   pendingMessage,
   onPendingMessageConsumed,
 }: ModernTripPlannerProps) {
-  const clerk = useClerk();
   const [prompt, setPrompt] = useState("");
   const [activeBudget, setActiveBudget] = useState("Moderate");
   const [activeStyle, setActiveStyle] = useState("Couple");
@@ -73,7 +67,7 @@ export default function ModernTripPlanner({
   };
 
   const handleQuickStyleSubmit = async () => {
-    const promptText = `Plan a ${activeStyle.toLowerCase()} trip with ${activeBudget.toLowerCase()} budget for ${travelers} people`;
+    const promptText = `Plan a ${activeStyle.toLowerCase()} trip to ${destinationInput || "Goa"} with ${activeBudget.toLowerCase()} budget for ${travelers} people`;
     setPrompt(promptText);
     setIsGenerating(true);
     try {
@@ -92,40 +86,8 @@ export default function ModernTripPlanner({
 
   return (
     <div className="min-h-screen bg-[#fafafa] text-gray-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
-      {/* Navigation */}
-      <div className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-6 px-4 pointer-events-none">
-        <nav className="pointer-events-auto flex items-center justify-between w-full max-w-5xl px-6 py-3 bg-white/70 backdrop-blur-md border border-white/20 rounded-full shadow-sm">
-          <div className="flex items-center gap-2 cursor-pointer group">
-            <div className="bg-indigo-600 p-2 rounded-full text-white group-hover:scale-105 transition-transform">
-              <Globe2 size={20} />
-            </div>
-            <span className="font-bold text-xl tracking-tight text-gray-800">WanderWay</span>
-          </div>
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
-            <a href="#" className="hover:text-indigo-600 transition-colors">Destinations</a>
-            <a href="#" className="hover:text-indigo-600 transition-colors">AI Planner</a>
-            <a href="#" className="hover:text-indigo-600 transition-colors">Community</a>
-          </div>
-          <div className="flex items-center gap-4">
-            <button className="hidden md:flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors">
-              <Heart size={18} />
-              Saved
-            </button>
-            <button
-              onClick={() => clerk.openSignIn()}
-              className="bg-gray-900 text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-gray-800 hover:-translate-y-0.5 transition-all shadow-md"
-            >
-              Sign In
-            </button>
-            <button className="md:hidden text-gray-800">
-              <Menu size={24} />
-            </button>
-          </div>
-        </nav>
-      </div>
-
       {/* Main Content */}
-      <main className="pt-40 pb-20 px-4 max-w-6xl mx-auto flex flex-col items-center text-center">
+      <main className="pt-20 pb-20 px-4 max-w-6xl mx-auto flex flex-col items-center text-center">
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold mb-8 animate-fade-in-up">
           <Sparkles size={14} />

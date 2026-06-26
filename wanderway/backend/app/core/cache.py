@@ -114,14 +114,15 @@ class CacheService:
         except Exception as e:
             logger.warning(f"Error saving user trip for {user_id}: {e}")
 
-    async def delete_user_trip(self, user_id: str, trip_id: str) -> None:
-        """Remove a trip from the user's history."""
+    async def delete_user_trip(self, user_id: str, trip_id: str, ttl: int = 7776000) -> None:
+        """Remove a trip from the user's history (default TTL: 90 days)."""
         if not self.redis:
             return
         try:
             trips = await self.get_user_trips(user_id)
             updated = [t for t in trips if t.get("id") != trip_id]
-            await self.redis.set(f"user_trips:{user_id}", json.dumps(updated))
+            # Preserve the TTL on update to prevent indefinite persistence
+            await self.redis.set(f"user_trips:{user_id}", json.dumps(updated), ex=ttl)
         except Exception as e:
             logger.warning(f"Error deleting user trip {trip_id} for {user_id}: {e}")
 
